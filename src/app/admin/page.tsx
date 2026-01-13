@@ -53,6 +53,8 @@ export default function AdminPage() {
   const [rows, setRows] = useState<OrderRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [partnerLeads, setPartnerLeads] = useState<PartnerLead[]>([]);
+  const [importing, setImporting] = useState(false);
+  const [importMsg, setImportMsg] = useState<string | null>(null);
   const gridRef = useRef<AgGridReact<OrderRow>>(null);
   const silentUpdateRef = useRef(0);
 
@@ -377,6 +379,37 @@ export default function AdminPage() {
     setRows(prev => [data as any, ...prev]);
   }
 
+  async function importShopifyOrders() {
+    setImporting(true);
+    setImportMsg(null);
+    const res = await fetch("/api/admin/import-shopify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+
+    let json: any = {};
+    try {
+      json = await res.json();
+    } catch {
+      json = {};
+    }
+
+    setImporting(false);
+
+    if (!res.ok) {
+      setImportMsg(json.error || "Import failed");
+      return;
+    }
+
+    setImportMsg(`Imported ${json.imported} orders (skipped ${json.skipped}).`);
+    const ordersRes = await fetch("/api/orders");
+    if (ordersRes.ok) {
+      const orderRows = await ordersRes.json();
+      setRows(orderRows || []);
+    }
+  }
+
   async function deleteOrder(orderId: string) {
     const res = await fetch("/api/orders", {
       method: "DELETE",
@@ -404,6 +437,13 @@ export default function AdminPage() {
         <button onClick={createBlankOrder} style={{ padding: "8px 10px" }}>
           + New Row
         </button>
+        <button
+          onClick={importShopifyOrders}
+          disabled={importing}
+          style={{ padding: "8px 10px" }}
+        >
+          {importing ? "Importing..." : "Import Shopify"}
+        </button>
         <button onClick={() => router.push("/admin/vendors")} style={{ padding: "8px 10px" }}>
           Vendors
         </button>
@@ -414,6 +454,11 @@ export default function AdminPage() {
           Logout
         </button>
       </div>
+      {importMsg && (
+        <div style={{ marginBottom: 12, color: "#111827" }}>
+          {importMsg}
+        </div>
+      )}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
         <button onClick={() => applyFilter("all")} style={{ padding: "6px 10px" }}>
           All
