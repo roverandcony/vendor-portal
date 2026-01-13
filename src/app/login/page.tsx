@@ -86,7 +86,7 @@ export default function LoginPage() {
           disabled={loading}
           style={{ padding: 10, borderRadius: 8, border: "1px solid #ccc" }}
         >
-          Create account (for you first)
+          Create account
         </button>
 
         {msg && <div style={{ marginTop: 8 }}>{msg}</div>}

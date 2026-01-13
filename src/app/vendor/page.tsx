@@ -295,14 +295,12 @@ export default function VendorPage() {
         <div style={{ opacity: 0.7, marginTop: 4 }}>
           Send their details and we will help get them onboarded quickly.
         </div>
-        {profileRole === "admin" ? (
-          <button
-            onClick={() => router.push("/admin/partner-leads")}
-            style={{ marginTop: 10, padding: "6px 10px" }}
-          >
-            Open Partner Intake Form
-          </button>
-        ) : null}
+        <button
+          onClick={() => router.push("/admin/partner-leads")}
+          style={{ marginTop: 10, padding: "6px 10px" }}
+        >
+          Open Partner Intake Form
+        </button>
       </div>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
         <button onClick={() => applyFilter("all")} style={{ padding: "6px 10px" }}>

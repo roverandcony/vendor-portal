@@ -2,11 +2,14 @@ import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { buildTrackingUrl } from "@/lib/tracking";
+import { sendAdminNotification } from "@/lib/email";
 
 type Profile = {
   id: string;
   role: "admin" | "vendor";
   is_active: boolean;
+  email: string | null;
+  vendor_name: string | null;
 };
 
 async function requireProfile() {
@@ -17,7 +20,7 @@ async function requireProfile() {
   const admin = supabaseAdmin();
   const { data, error } = await admin
     .from("profiles")
-    .select("id,role,is_active")
+    .select("id,role,is_active,email,vendor_name")
     .eq("id", auth.user.id)
     .maybeSingle();
 
@@ -31,9 +34,10 @@ async function requireProfile() {
         id: auth.user.id,
         email: auth.user.email,
         role: "vendor",
+        vendor_name: null,
         is_active: true,
       })
-      .select("id,role,is_active")
+      .select("id,role,is_active,email,vendor_name")
       .single();
 
     if (createErr) return { error: NextResponse.json({ error: createErr.message }, { status: 500 }) };
@@ -118,7 +122,7 @@ export async function PATCH(req: Request) {
 
   const { data: existing, error: fetchErr } = await admin
     .from("orders")
-    .select("id,assigned_vendor_id,status,carrier,tracking_number,issue_reason")
+    .select("id,assigned_vendor_id,order_number,status,carrier,tracking_number,issue_reason")
     .eq("id", id)
     .maybeSingle();
 
@@ -148,6 +152,7 @@ export async function PATCH(req: Request) {
   const nextCarrier = (sanitizedChanges as any).carrier ?? existing.carrier;
   const nextTracking = (sanitizedChanges as any).tracking_number ?? existing.tracking_number;
   const nextIssueReason = (sanitizedChanges as any).issue_reason ?? existing.issue_reason;
+  const statusChanged = nextStatus !== existing.status;
 
   if (nextStatus === "shipped" && (!nextCarrier || !nextTracking)) {
     return NextResponse.json(
@@ -172,6 +177,21 @@ export async function PATCH(req: Request) {
 
   const { error: updateErr } = await admin.from("orders").update(sanitizedChanges).eq("id", id);
   if (updateErr) return NextResponse.json({ error: updateErr.message }, { status: 500 });
+
+  if (profile.role === "vendor" && statusChanged) {
+    const vendorLabel = profile.vendor_name || profile.email || profile.id;
+    const orderLabel = existing.order_number || id;
+    const trackingLine = nextTracking ? `\nTracking: ${nextTracking}` : "";
+    const carrierLine = nextCarrier ? `\nCarrier: ${nextCarrier}` : "";
+    await sendAdminNotification({
+      subject: `Vendor updated shipping status: ${orderLabel}`,
+      text:
+        `Vendor ${vendorLabel} updated order ${orderLabel}.\n` +
+        `Status: ${existing.status} → ${nextStatus}` +
+        carrierLine +
+        trackingLine,
+    });
+  }
 
   const auditField = audit?.field;
   if (auditField && audit?.oldValue !== audit?.newValue) {

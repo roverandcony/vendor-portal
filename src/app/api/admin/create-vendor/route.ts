@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { sendAdminNotification } from "@/lib/email";
 
 const admin = supabaseAdmin();
 
@@ -46,6 +47,13 @@ export async function POST(req: Request) {
   });
 
   if (pErr) return NextResponse.json({ error: pErr.message }, { status: 400 });
+
+  await sendAdminNotification({
+    subject: "New vendor created",
+    text: `A new vendor account was created.\n\nEmail: ${email}\nVendor name: ${
+      vendor_name || "N/A"
+    }\nUser ID: ${userId}`,
+  });
 
   return NextResponse.json({ ok: true });
 }

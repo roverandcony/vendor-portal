@@ -10,6 +10,7 @@ export default function PartnerLeadsPage() {
   const [businessType, setBusinessType] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -17,7 +18,7 @@ export default function PartnerLeadsPage() {
       if (profileRes.status === 401) return router.push("/login");
       const profile = await profileRes.json();
       if (!profile.is_active) return router.push("/login");
-      if (profile.role !== "admin") return router.push("/vendor");
+      setIsAdmin(profile.role === "admin");
       setLoading(false);
     })();
   }, [router]);
@@ -53,7 +54,10 @@ export default function PartnerLeadsPage() {
 
   return (
     <div style={{ maxWidth: 520, margin: "40px auto", padding: 16 }}>
-      <button onClick={() => router.push("/admin")} style={{ marginBottom: 12 }}>
+      <button
+        onClick={() => router.push(isAdmin ? "/admin" : "/vendor")}
+        style={{ marginBottom: 12 }}
+      >
         ← Back
       </button>
       <h1 style={{ fontSize: 20, fontWeight: 700 }}>Partner Intake</h1>
