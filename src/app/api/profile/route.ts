@@ -53,7 +53,7 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   try {
-    const profile = await fetchOrCreateProfile(user.id, user.email);
+    const profile = await fetchOrCreateProfile(user.id, user.email ?? null);
     return NextResponse.json(profile);
   } catch (err: any) {
     return NextResponse.json({ error: err.message || "Failed" }, { status: 500 });
