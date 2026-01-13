@@ -72,7 +72,7 @@ async function fetchShopifyOrders(token: string, sinceDays: number) {
     created_at_min: createdAtMin,
     limit: "250",
   });
-  let url = `https://${domain}/admin/api/${SHOPIFY_API_VERSION}/orders.json?${params.toString()}`;
+  let url: string | null = `https://${domain}/admin/api/${SHOPIFY_API_VERSION}/orders.json?${params.toString()}`;
   const orders: ShopifyOrder[] = [];
 
   for (let page = 0; page < MAX_PAGES && url; page += 1) {
