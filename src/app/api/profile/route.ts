@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { sendAdminNotification } from "@/lib/email";
 
 type Profile = {
   id: string;
@@ -65,12 +66,18 @@ export async function POST(req: Request) {
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const body = await req.json().catch(() => ({}));
-  const email = body.email ?? user.email;
+  const email = body.email ?? user.email ?? null;
   const role = body.role ?? "vendor";
   const vendor_name = body.vendor_name ?? null;
 
   try {
     const admin = supabaseAdmin();
+    const { data: existing } = await admin
+      .from("profiles")
+      .select("id,role")
+      .eq("id", user.id)
+      .maybeSingle();
+
     const { data, error } = await admin
       .from("profiles")
       .upsert({
@@ -84,6 +91,16 @@ export async function POST(req: Request) {
       .single();
 
     if (error) throw error;
+
+    if (!existing && role === "vendor") {
+      await sendAdminNotification({
+        subject: "New vendor self-signup",
+        text: `A vendor signed up through the login page.\n\nEmail: ${
+          email || "N/A"
+        }\nVendor name: ${vendor_name || "N/A"}\nUser ID: ${user.id}`,
+      });
+    }
+
     return NextResponse.json(data as Profile);
   } catch (err: any) {
     return NextResponse.json({ error: err.message || "Failed" }, { status: 500 });
